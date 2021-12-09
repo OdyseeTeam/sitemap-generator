@@ -1,0 +1,8 @@
+{
+  "chainquery": {
+    "host": "localhost",
+    "user": "chainquery",
+    "database": "chainquery",
+    "password": "chainquery"
+  }
+}
