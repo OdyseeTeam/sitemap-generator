@@ -1,5 +1,6 @@
 # Odysee Sitemap Generator
-[![Build Status](https://travis-ci.com/OdyseeTeam/sitemap-generator.svg?branch=master)](https://travis-ci.com/OdyseeTeam/sitemap-generator)
+[![Build Status](https://app.travis-ci.com/OdyseeTeam/sitemap-generator.svg?token=6GPvhdnmp2bbM55sBtou&branch=master)](https://app.travis-ci.com/OdyseeTeam/sitemap-generator)
+[![Latest release](https://badgen.net/github/release/OdyseeTeam/sitemap-generator)](https://github.com/OdyseeTeam/sitemap-generator/releases)
 
 This tool builds sitemaps for https://odysee.com
 
