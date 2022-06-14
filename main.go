@@ -81,8 +81,8 @@ func crawler(cmd *cobra.Command, args []string) {
 			"title":            c.Title,
 			"description":      description,
 			"publication_date": releaseTime.Format("2006-01-02T15:04:05-07:00"),
-			"content_loc":      stm.Attrs{fmt.Sprintf("%s%s/%s", embedEndpoint, c.Name, c.ClaimID), map[string]string{"allow_embed": "Yes", "autoplay": "autoplay=1"}},
-			"player_loc":       fmt.Sprintf("%sapi/v4/streams/free/%s/%s/%s", playerEndpoint, c.Name, c.ClaimID, c.SdHash[:6]),
+			"player_loc":       stm.Attrs{fmt.Sprintf("%s%s/%s", embedEndpoint, c.Name, c.ClaimID), map[string]string{"allow_embed": "Yes", "autoplay": "autoplay=1"}},
+			"content_loc":      fmt.Sprintf("%sapi/v3/streams/free/%s/%s/%s.mp4", playerEndpoint, c.Name, c.ClaimID, c.SdHash[:6]),
 		}
 		if !c.Duration.IsNull() && c.Duration.Int >= 1 && c.Duration.Int < 28800 {
 			videoURL["duration"] = c.Duration.Int
