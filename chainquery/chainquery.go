@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"sync"
+	"time"
 
 	"odysee-sitemap-generator/configs"
 
@@ -42,17 +43,15 @@ func connect() (*sql.DB, error) {
 }
 
 type Claim struct {
-	ClaimID           string      `json:"claim_id"`
-	Name              string      `json:"name"`
-	ThumbnailURL      string      `json:"thumbnail_url"`
-	Title             string      `json:"title"`
-	Description       null.String `json:"description"`
-	TransactionHashID string      `json:"transaction_hash_id"`
-	Vout              int         `json:"vout"`
-	SdHash            string      `json:"sd_hash"`
-	Duration          null.Int    `json:"duration"`
-	ReleaseTime       null.Int64  `json:"release_time"`
-	TransactionTime   int64       `json:"transaction_time"`
+	ClaimID         string      `json:"claim_id"`
+	Name            string      `json:"name"`
+	ThumbnailURL    string      `json:"thumbnail_url"`
+	Title           string      `json:"title"`
+	Description     null.String `json:"description"`
+	SdHash          string      `json:"sd_hash"`
+	Duration        null.Int    `json:"duration"`
+	ReleaseTime     null.Int64  `json:"release_time"`
+	TransactionTime int64       `json:"transaction_time"`
 }
 
 func (c *CQApi) GetVideoStreams() ([]*Claim, error) {
@@ -61,8 +60,6 @@ func (c *CQApi) GetVideoStreams() ([]*Claim, error) {
        thumbnail_url,
        title,
        description,
-       transaction_hash_id,
-       vout,
        sd_hash,
        duration,
        release_time,
@@ -83,7 +80,7 @@ where bid_state = ?
 	claims := make([]*Claim, 0, 100000)
 	for rows.Next() {
 		var claim Claim
-		err = rows.Scan(&claim.ClaimID, &claim.Name, &claim.ThumbnailURL, &claim.Title, &claim.Description, &claim.TransactionHashID, &claim.Vout, &claim.SdHash, &claim.Duration, &claim.ReleaseTime, &claim.TransactionTime)
+		err = rows.Scan(&claim.ClaimID, &claim.Name, &claim.ThumbnailURL, &claim.Title, &claim.Description, &claim.SdHash, &claim.Duration, &claim.ReleaseTime, &claim.TransactionTime)
 		if err != nil {
 			return nil, errors.Err(err)
 		}
@@ -96,38 +93,38 @@ where bid_state = ?
 	return claims, nil
 }
 
-func (c *CQApi) GetVideoStreamsBatch(prevId, limit uint64) ([]*Claim, uint64, error) {
+func (c *CQApi) GetVideoStreamsBatch(prevId, limit uint64, since time.Time) ([]*Claim, uint64, error) {
 	logrus.Infof("processing batch with ids %d - %d", prevId, prevId+limit)
 	query := `SELECT id, claim_id,
        name,
        thumbnail_url,
        title,
        description,
-       transaction_hash_id,
-       vout,
        sd_hash,
        duration,
        release_time,
        transaction_time
 FROM claim
-where id between ? and ?
+where id > ?
   and bid_state = ?
   and claim_type = ?
   and title != ?
   and content_type like ?
   and fee_address is null
-  and thumbnail_url is not null`
-	rows, err := c.dbConn.Query(query, prevId, prevId+limit, "controlling", 1, "", "video/%")
+  and thumbnail_url is not null
+  and transaction_time > ?
+  limit ?`
+	rows, err := c.dbConn.Query(query, prevId, "controlling", 1, "", "video/%", since.Unix(), limit)
 	if err != nil {
 		return nil, prevId, errors.Err(err)
 	}
 	defer rows.Close()
-
+	//prevId += limit
 	claims := make([]*Claim, 0, limit)
 	for rows.Next() {
 		var claim Claim
 		var lastId uint64
-		err = rows.Scan(&lastId, &claim.ClaimID, &claim.Name, &claim.ThumbnailURL, &claim.Title, &claim.Description, &claim.TransactionHashID, &claim.Vout, &claim.SdHash, &claim.Duration, &claim.ReleaseTime, &claim.TransactionTime)
+		err = rows.Scan(&lastId, &claim.ClaimID, &claim.Name, &claim.ThumbnailURL, &claim.Title, &claim.Description, &claim.SdHash, &claim.Duration, &claim.ReleaseTime, &claim.TransactionTime)
 		if err != nil {
 			return nil, prevId, errors.Err(err)
 		}
@@ -148,6 +145,26 @@ func (c *CQApi) GetTopID() (uint64, error) {
 FROM claim
 order by id desc limit 1`
 	row := c.dbConn.QueryRow(query)
+	var id uint64
+	err := row.Scan(&id)
+	if err != nil {
+		return 0, errors.Err(err)
+	}
+	return id, nil
+}
+
+func (c *CQApi) GetIdFor(timeStamp time.Time) (uint64, error) {
+	query := `SELECT id
+FROM claim
+ where transaction_time > ?
+  and bid_state = ?
+  and claim_type = ?
+  and title != ?
+  and content_type like ?
+  and fee_address is null
+  and thumbnail_url is not null
+order by id limit 1`
+	row := c.dbConn.QueryRow(query, timeStamp.Unix(), "controlling", 1, "", "video/%")
 	var id uint64
 	err := row.Scan(&id)
 	if err != nil {
