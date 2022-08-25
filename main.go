@@ -49,52 +49,65 @@ func crawler(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
-	claims, err := cqApi.GetVideoStreams()
-	if err != nil {
-		panic(err)
-	}
-
+	//claims, err := cqApi.GetVideoStreams()
+	prevId := uint64(999)
+	newPrevId := uint64(0)
 	sm := stm.NewSitemap()
-
 	// Create method must be called first before adding entries to
 	// the sitemap.
 	sm.Create()
 	sm.SetDefaultHost(website)
 	sm.SetSitemapsHost(sitemapEndpoint)
 	sm.SetCompress(true)
-	for _, c := range claims {
-		_, err := url.ParseRequestURI(c.ThumbnailURL)
-		if err != nil {
-			logrus.Errorf("invalid thumbnail URL found: %s", c.ThumbnailURL)
-			continue
-		}
-		description := parseDescription(c.Description)
-		releaseTime := time.Unix(c.TransactionTime, 0)
-		if !c.ReleaseTime.IsNull() {
-			releaseTime = time.Unix(c.ReleaseTime.Int64, 0)
-		}
-		if len(c.SdHash) < 10 {
-			continue
-		}
-		videoURL := stm.URL{
-			"thumbnail_loc":    c.ThumbnailURL,
-			"title":            c.Title,
-			"description":      description,
-			"publication_date": releaseTime.Format("2006-01-02T15:04:05-07:00"),
-			"player_loc":       stm.Attrs{fmt.Sprintf("%s%s/%s", embedEndpoint, c.Name, c.ClaimID), map[string]string{"allow_embed": "Yes", "autoplay": "autoplay=1"}},
-			"content_loc":      fmt.Sprintf("%sapi/v3/streams/free/%s/%s/%s", playerEndpoint, c.Name, c.ClaimID, c.SdHash[:6]),
-		}
-		if !c.Duration.IsNull() && c.Duration.Int >= 1 && c.Duration.Int < 28800 {
-			videoURL["duration"] = c.Duration.Int
-		}
-		urlToAdd := stm.URL{
-			"loc":   fmt.Sprintf("/%s/%s", url.QueryEscape(c.Name), c.ClaimID),
-			"video": videoURL,
-		}
-		sm.Add(urlToAdd)
+	topId, err := cqApi.GetTopID()
+	if err != nil {
+		panic(err)
 	}
+	for prevId < topId {
+		if prevId == newPrevId {
+			newPrevId++
+		}
+		prevId = newPrevId
+		var claims []*chainquery.Claim
+		claims, newPrevId, err = cqApi.GetVideoStreamsBatch(prevId, 10000)
+		if err != nil {
+			panic(err)
+		}
 
-	sm.Finalize().PingSearchEngines()
+		for _, c := range claims {
+			_, err := url.ParseRequestURI(c.ThumbnailURL)
+			if err != nil {
+				logrus.Errorf("invalid thumbnail URL found: %s", c.ThumbnailURL)
+				continue
+			}
+			description := parseDescription(c.Description.String)
+			releaseTime := time.Unix(c.TransactionTime, 0)
+			if !c.ReleaseTime.IsNull() {
+				releaseTime = time.Unix(c.ReleaseTime.Int64, 0)
+			}
+			if len(c.SdHash) < 10 {
+				continue
+			}
+			videoURL := stm.URL{
+				"thumbnail_loc":    c.ThumbnailURL,
+				"title":            c.Title,
+				"description":      description,
+				"publication_date": releaseTime.Format("2006-01-02T15:04:05-07:00"),
+				"player_loc":       stm.Attrs{fmt.Sprintf("%s%s/%s", embedEndpoint, c.Name, c.ClaimID), map[string]string{"allow_embed": "Yes", "autoplay": "autoplay=1"}},
+				"content_loc":      fmt.Sprintf("%sapi/v3/streams/free/%s/%s/%s", playerEndpoint, c.Name, c.ClaimID, c.SdHash[:6]),
+			}
+			if !c.Duration.IsNull() && c.Duration.Int >= 1 && c.Duration.Int < 28800 {
+				videoURL["duration"] = c.Duration.Int
+			}
+			urlToAdd := stm.URL{
+				"loc":   fmt.Sprintf("/%s/%s", url.QueryEscape(c.Name), c.ClaimID),
+				"video": videoURL,
+			}
+			sm.Add(urlToAdd)
+		}
+	}
+	sm.Finalize()
+	//.PingSearchEngines()
 }
 
 func parseDescription(description string) string {
