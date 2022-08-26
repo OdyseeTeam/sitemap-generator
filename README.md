@@ -6,7 +6,6 @@ This tool builds sitemaps for https://odysee.com
 
 # Requirements
 - A Chainquery mysql connection (credentials or own instance)
-- Quite some RAM (works with 32GB for sure)
 - A web server if you want to serve the sitemaps
 
 # Setup
@@ -24,18 +23,15 @@ Usage:
 Flags:
       --embed-endpoint string     endpoint for embeds (default "https://odysee.com/$/embed/")
   -h, --help                      help for sitemap-generator
-      --player-endpoint string    endpoint of the player (default "https://cdn.lbryplayer.xyz/")
+      --player-endpoint string    endpoint of the player (default "https://player.odycdn.com/")
       --sitemap-endpoint string   endpoint for embeds (default "https://sitemaps.odysee.com")
+      --type string               type of sitemap to generate (global, monthly, weekly, daily, hourly (default "global")
       --website string            endpoint for embeds (default "https://odysee.com")
 ```
 
 ## Running from Source
 
 Clone the repository and run `make`
-
-## License
-
-This project is MIT licensed. For the full license, see [LICENSE](LICENSE).
 
 ## Contributing
 

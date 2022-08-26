@@ -101,8 +101,7 @@ func crawler(cmd *cobra.Command, args []string) {
 		}
 		processClaims(sm, claims)
 	}
-	sm.Finalize()
-	//.PingSearchEngines()
+	sm.Finalize().PingSearchEngines()
 }
 
 func processClaims(sm *stm.Sitemap, claims []*chainquery.Claim) {
